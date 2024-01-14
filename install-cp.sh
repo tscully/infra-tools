@@ -24,7 +24,7 @@ KUBE_VERSION=1.27.9
 ### setup terminal
 apt-get --allow-unauthenticated update
 apt-get --allow-unauthenticated install -y bash-completion binutils
-echo 'colorscheme ron' >> ~/.vimrc
+echo 'colorscheme default' >> ~/.vimrc
 echo 'set tabstop=2' >> ~/.vimrc
 echo 'set shiftwidth=2' >> ~/.vimrc
 echo 'set expandtab' >> ~/.vimrc
