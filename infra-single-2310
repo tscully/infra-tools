@@ -1,0 +1,6 @@
+gcloud compute instances create linux01 --zone=europe-west1-b \
+--machine-type=e2-medium \
+--network-interface ''  \
+--image=ubuntu-2310-mantic-amd64-v20231215 \
+--image-project=ubuntu-os-cloud \
+--boot-disk-size=200GB 
