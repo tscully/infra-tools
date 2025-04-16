@@ -1,0 +1,6 @@
+gcloud compute instances create linux01 \
+--machine-type=e2-medium \
+--network-interface ''  \
+--image=rhel-9-v20250311 \
+--image-project=rhel-cloud \
+--boot-disk-size=100GB 

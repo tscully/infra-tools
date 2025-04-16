@@ -22,7 +22,6 @@ fi
 #KUBE_VERSION=1.31.5
 KUBE_VERSION=1.32.3
 
-
 # get platform
 PLATFORM=`uname -p`
 
@@ -36,6 +35,7 @@ else
   exit 1
 fi
 
+
 ### setup terminal
 apt-get --allow-unauthenticated update
 apt-get --allow-unauthenticated install -y bash-completion binutils
@@ -48,6 +48,8 @@ echo 'alias k=kubectl' >> ~/.bashrc
 echo 'alias c=clear' >> ~/.bashrc
 echo 'complete -F __start_kubectl k' >> ~/.bashrc
 sed -i '1s/^/force_color_prompt=yes\n/' ~/.bashrc
+echo 'source ~/kube-ps1.sh' >>~root/.bashrc
+echo "PS1='[\u@\h \W \$(kube_ps1)]\$ '" >>~root/.bashrc
 
 
 ### disable linux swap and remove any existing swap partitions
@@ -58,47 +60,19 @@ sed -i '/\sswap\s/ s/^\(.*\)$/#\1/g' /etc/fstab
 ### remove packages
 kubeadm reset -f || true
 crictl rm --force $(crictl ps -a -q) || true
-apt-mark unhold kubelet kubeadm kubectl kubernetes-cni || true
-apt-get remove -y docker.io containerd kubelet kubeadm kubectl kubernetes-cni || true
-apt-get autoremove -y
+dnf remove -y docker.io containerd kubelet kubeadm kubectl kubernetes-cni || true
+dnf autoremove -y
 systemctl daemon-reload
 
-
-
-### install podman
-. /etc/os-release
-echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list
-curl -L "http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key" | sudo apt-key add -
-apt-get update -qq
-apt-get -qq -y install podman cri-tools containers-common
-rm /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list
-cat <<EOF | sudo tee /etc/containers/registries.conf
-[registries.search]
-registries = ['docker.io']
+# This overwrites any existing configuration in /etc/yum.repos.d/kubernetes.repo
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.32/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.32/rpm/repodata/repomd.xml.key
 EOF
-
-
-### install packages
-apt-get install -y apt-transport-https ca-certificates
-mkdir -p /etc/apt/keyrings
-rm /etc/apt/keyrings/kubernetes-1-28-apt-keyring.gpg || true
-rm /etc/apt/keyrings/kubernetes-1-29-apt-keyring.gpg || true
-rm /etc/apt/keyrings/kubernetes-1-30-apt-keyring.gpg || true
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-1-28-apt-keyring.gpg
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-1-29-apt-keyring.gpg
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-1-30-apt-keyring.gpg
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-1-31-apt-keyring.gpg
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-1-32-apt-keyring.gpg
-echo > /etc/apt/sources.list.d/kubernetes.list
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-1-28-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-1-29-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-1-30-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-1-31-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-1-32-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
-apt-get --allow-unauthenticated update
-apt-get --allow-unauthenticated install -y docker.io containerd kubelet=${KUBE_VERSION}-1.1 kubeadm=${KUBE_VERSION}-1.1 kubectl=${KUBE_VERSION}-1.1 kubernetes-cni
-apt-mark hold kubelet kubeadm kubectl kubernetes-cni
-
 
 ### install containerd 1.6 over apt-installed-version
 wget https://github.com/containerd/containerd/releases/download/v1.6.12/containerd-1.6.12-linux-amd64.tar.gz
@@ -188,13 +162,39 @@ systemctl restart containerd
 systemctl enable kubelet && systemctl start kubelet
 
 
-
 ### init k8s
-kubeadm reset -f
-systemctl daemon-reload
-service kubelet start
+rm /root/.kube/config || true
+kubeadm init --kubernetes-version=${KUBE_VERSION} --ignore-preflight-errors=NumCPU --skip-token-print --pod-network-cidr 192.168.0.0/16
+
+mkdir -p ~/.kube
+sudo cp -i /etc/kubernetes/admin.conf ~/.kube/config
+
+### CNI
+#kubectl apply -f https://raw.githubusercontent.com/killer-sh/cks-course-environment/master/cluster-setup/calico.yaml
+export CILIUM_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+export CILIUM_ARCH=$(dpkg --print-architecture)
+# Download the Cilium CLI binary and its sha256sum
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/$CILIUM_VERSION/cilium-linux-$CILIUM_ARCH.tar.gz{,.sha256sum}
+
+# Verify sha256sum
+sha256sum --check cilium-linux-$CILIUM_ARCH.tar.gz.sha256sum
+
+# Move binary to correct location and remove tarball
+tar xzvf cilium-linux-$CILIUM_ARCH.tar.gz -C /usr/local/bin
+rm cilium-linux-$CILIUM_ARCH.tar.gz{,.sha256sum}
+
+cilium install
+
+
+# etcdctl
+ETCDCTL_VERSION=v3.5.1
+ETCDCTL_ARCH=$(dpkg --print-architecture)
+ETCDCTL_VERSION_FULL=etcd-${ETCDCTL_VERSION}-linux-${ETCDCTL_ARCH}
+wget https://github.com/etcd-io/etcd/releases/download/${ETCDCTL_VERSION}/${ETCDCTL_VERSION_FULL}.tar.gz
+tar xzf ${ETCDCTL_VERSION_FULL}.tar.gz ${ETCDCTL_VERSION_FULL}/etcdctl
+mv ${ETCDCTL_VERSION_FULL}/etcdctl /usr/bin/
+rm -rf ${ETCDCTL_VERSION_FULL} ${ETCDCTL_VERSION_FULL}.tar.gz
 
 echo
-echo "EXECUTE ON MASTER: kubeadm token create --print-join-command --ttl 0"
-echo "THEN RUN THE OUTPUT AS COMMAND HERE TO ADD AS WORKER"
-echo
+echo "### COMMAND TO ADD A WORKER NODE ###"
+kubeadm token create --print-join-command --ttl 0
