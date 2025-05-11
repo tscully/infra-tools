@@ -2,8 +2,8 @@
 
 set -e
 
-KUBERNETES_MINOR_VERSION=1.32.3
-KUBERNETES_MAJOR_VERSION=v1.32
+KUBERNETES_MINOR_VERSION=1.33.0
+KUBERNETES_MAJOR_VERSION=v1.33
 CRIO_VERSION=v1.32
 
 cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
@@ -31,7 +31,8 @@ dnf install -y cri-o kubelet kubeadm kubectl
 
 mv /etc/cni/net.d/10-crio-bridge.conflist.disabled /etc/cni/net.d/10-crio-bridge.conflist
 
-systemctl start crio.service
+systemctl enable --now  crio.service
+systemctl disable --now firewalld
 
 swapoff -a
 modprobe br_netfilter

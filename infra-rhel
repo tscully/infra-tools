@@ -1,4 +1,12 @@
-gcloud compute instances create linux01 \
+gcloud compute instances create control-plane \
+--machine-type=e2-medium \
+--network-interface ''  \
+--image=rhel-9-v20250415  \
+--image-project=rhel-cloud \
+--boot-disk-size=100GB 
+
+
+gcloud compute instances create worker-node0{1..3} \
 --machine-type=e2-medium \
 --network-interface ''  \
 --image=rhel-9-v20250415  \

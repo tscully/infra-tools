@@ -1,2 +1,2 @@
-gcloud compute instances delete control-plane worker-node01 worker-node02
+gcloud compute instances delete control-plane worker-node01 worker-node02 worker-node03
 #gcloud compute instances delete linux01 linux02

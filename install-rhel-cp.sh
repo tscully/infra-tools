@@ -2,8 +2,8 @@
 
 set -e
 
-KUBERNETES_MINOR_VERSION=1.32.3
-KUBERNETES_MAJOR_VERSION=v1.32
+KUBERNETES_MINOR_VERSION=1.33.0
+KUBERNETES_MAJOR_VERSION=v1.33
 CRIO_VERSION=v1.32
 
 cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
@@ -41,6 +41,8 @@ sysctl -w net.ipv4.ip_forward=1
 kubeadm init --kubernetes-version=${KUBERNETES_MINOR_VERSION} --ignore-preflight-errors=NumCPU --skip-token-print --pod-network-cidr 192.168.0.0/16
 
 systemctl enable --now kubelet
+systemctl disable --now firewalld
+
  
 mkdir -p ~/.kube
 cp -i /etc/kubernetes/admin.conf ~/.kube/config
