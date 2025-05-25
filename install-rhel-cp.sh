@@ -2,9 +2,9 @@
 
 set -e
 
-KUBERNETES_MINOR_VERSION=1.33.0
+KUBERNETES_MINOR_VERSION=1.33.1
 KUBERNETES_MAJOR_VERSION=v1.33
-CRIO_VERSION=v1.32
+CRIO_VERSION=v1.33
 
 cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
@@ -24,11 +24,8 @@ gpgcheck=1
 gpgkey=https://download.opensuse.org/repositories/isv:/cri-o:/stable:/$CRIO_VERSION/rpm/repodata/repomd.xml.key
 EOF
  
-dnf install -y bash-completion
-
-dnf install -y container-selinux
-
-dnf install -y cri-o kubelet kubeadm kubectl
+dnf update -y 
+dnf install -y bash-completion container-selinux cri-o kubelet kubeadm kubectl
 
 mv /etc/cni/net.d/10-crio-bridge.conflist.disabled /etc/cni/net.d/10-crio-bridge.conflist
 
@@ -42,7 +39,6 @@ kubeadm init --kubernetes-version=${KUBERNETES_MINOR_VERSION} --ignore-preflight
 
 systemctl enable --now kubelet
 systemctl disable --now firewalld
-
  
 mkdir -p ~/.kube
 cp -i /etc/kubernetes/admin.conf ~/.kube/config
@@ -57,7 +53,7 @@ sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
 sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
 rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 
-/usr/local/bin/cilium install --version 1.17.2
+/usr/local/bin/cilium install --version 1.17.4
 
 ### setup terminal
 echo 'colorscheme default' >> ~/.vimrc

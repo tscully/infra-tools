@@ -215,7 +215,7 @@ cilium install
 
 
 # etcdctl
-ETCDCTL_VERSION=v3.5.1
+ETCDCTL_VERSION=v3.5.21
 ETCDCTL_ARCH=$(dpkg --print-architecture)
 ETCDCTL_VERSION_FULL=etcd-${ETCDCTL_VERSION}-linux-${ETCDCTL_ARCH}
 wget https://github.com/etcd-io/etcd/releases/download/${ETCDCTL_VERSION}/${ETCDCTL_VERSION_FULL}.tar.gz
